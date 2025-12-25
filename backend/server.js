@@ -18,7 +18,29 @@ app.use(express.json());
 
 // Enable CORS
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: function (origin, callback) {
+        // Base allowed origins from ENV
+        let allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+            : [];
+
+        // Always allow localhost in development
+        if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+            if (!allowedOrigins.includes('http://localhost:5173')) {
+                allowedOrigins.push('http://localhost:5173');
+            }
+        }
+
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) === -1) {
+            console.error(`CORS Error: Origin ${origin} not allowed. Allowed: ${allowedOrigins.join(', ')}`);
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
     credentials: true
 };
 app.use(cors(corsOptions));
